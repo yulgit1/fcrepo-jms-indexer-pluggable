@@ -83,15 +83,23 @@ public class IndexerGroupIT {
         assertEquals(201, response.getStatusLine().getStatusCode());
         LOGGER.debug("Created object at: {}", uri);
 
+        String checkpid = "/" + pid;
+
+        int timeoutCnt = 0;
         synchronized (testIndexer) {
-            while (!testIndexer.receivedUpdate(uri)) {
+            while (!testIndexer.receivedUpdate(checkpid)) {
                 LOGGER.debug("Waiting for next notification from TestIndexer...");
                 testIndexer.wait(1000);
+                timeoutCnt++;
+                if (timeoutCnt>5) {
+                    LOGGER.debug ("Timed out while waiting on TestIndexer");
+                    break;
+                }
             }
         }
-        LOGGER.debug("Received update at test indexer for uri: {}", uri);
+        LOGGER.debug("Received update at test indexer for uri: {}", checkpid);
         assertTrue("Test indexer should have received an update message!", testIndexer
-                .receivedUpdate(uri));
+                .receivedUpdate(checkpid));
 
     }
 
@@ -108,16 +116,24 @@ public class IndexerGroupIT {
         final HttpResponse response = client.execute(method);
         assertEquals(204, response.getStatusLine().getStatusCode());
         LOGGER.debug("Deleted object at: {}", uri);
+
+        String checkpid = "/" + pid;
+        int timeoutCnt = 0;
         synchronized (testIndexer) {
-            while (!testIndexer.receivedRemove(uri)) {
+            while (!testIndexer.receivedRemove(checkpid)) {
                 LOGGER.debug("Waiting for next notification from TestIndexer...");
                 testIndexer.wait(1000);
+                timeoutCnt++;
+                if (timeoutCnt>5) {
+                    LOGGER.debug ("Timed out of waiting on TestIndexer");
+                    break;
+                }
             }
         }
-        LOGGER.debug("Received update at test indexer for uri: {}", uri);
+        LOGGER.debug("Received update at test indexer for uri: {}", checkpid);
 
         assertTrue("Test indexer should have received delete message!", testIndexer
-                .receivedRemove(uri));
+                .receivedRemove(checkpid));
 
     }
 }

@@ -18,29 +18,20 @@ package org.fcrepo.indexer;
 
 import static com.google.common.base.Throwables.propagate;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.apache.http.HttpStatus.SC_OK;
 import static org.fcrepo.kernel.RdfLexicon.REPOSITORY_NAMESPACE;
 import static org.slf4j.LoggerFactory.getLogger;
 
-import java.io.IOException;
-import java.io.StringReader;
+import java.util.Enumeration;
 import java.util.Set;
-import java.nio.charset.Charset;
 
 import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.MessageListener;
-import javax.jms.TextMessage;
 
 import org.apache.abdera.Abdera;
 import org.apache.abdera.model.Category;
-import org.apache.abdera.model.Document;
-import org.apache.abdera.model.Entry;
 import org.apache.abdera.parser.Parser;
-import org.apache.commons.io.IOUtils;
-import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.impl.conn.PoolingClientConnectionManager;
 
@@ -55,7 +46,8 @@ import org.slf4j.Logger;
  * https://wiki.duraspace.org/display/FF/Design+-+Messaging+for+Workflow
  *
  * current message factory:
- * https://github.com/futures/fcrepo4/blob/a9be2e5d8bc3d7d4909a0fdf674d9faa0a37708e/fcrepo-jms/src/main/java/org/fcrepo/jms/headers/DefaultMessageFactory.java
+ * https://github.com/futures/fcrepo4/blob/a9be2e5d8bc3d7d4909a0fdf674d9faa0a37708e/
+ * fcrepo-jms/src/main/java/org/fcrepo/jms/headers/DefaultMessageFactory.java
  *
  * @author Esmé Cowles
  * @author ajs6f
@@ -152,6 +144,10 @@ public class IndexerGroup implements MessageListener {
         }
         try {
             // get pid, timestamp, and eventType from message
+            Enumeration ee = message.getPropertyNames();
+            while (ee.hasMoreElements()) {
+                LOGGER.debug("Events received:" + ee.nextElement());
+            }
             try {
                 long timestamp = message.getLongProperty(TIMESTAMP_HEADER_NAME);
             } catch (final NumberFormatException e) {
@@ -160,7 +156,7 @@ public class IndexerGroup implements MessageListener {
             String pid = message.getStringProperty(IDENTIFIER_HEADER_NAME);
             String eventType = message.getStringProperty(EVENT_TYPE_HEADER_NAME);
 
-            final Boolean removal = "purgeObject".equals(eventType);
+            final Boolean removal = "http://fedora.info/definitions/v4/repository#NODE_REMOVED".equals(eventType);
             String content = "temp until getting real content from transformer";
             boolean hasContent = true; //temp
             LOGGER.debug("Operating with pid: {}", pid);
