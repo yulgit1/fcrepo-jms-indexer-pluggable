@@ -29,7 +29,7 @@
   </bean>
   
   <!-- Solr Indexer START-->
-    <bean id="solrIndexer" class="org.fcrepo.indexer.SolrIndexer">
+    <bean id="solrIndexer" class="org.fcrepo.indexer.solr.SolrIndexer">
     <constructor-arg ref="solrServer" />
     </bean>
 <!--Standardalone solr Server  -->

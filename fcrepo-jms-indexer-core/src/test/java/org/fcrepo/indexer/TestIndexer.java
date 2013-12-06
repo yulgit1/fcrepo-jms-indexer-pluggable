@@ -16,9 +16,11 @@
 
 package org.fcrepo.indexer;
 
+import static org.fcrepo.indexer.Indexer.IndexerType.NOOP;
 import static org.slf4j.LoggerFactory.getLogger;
 
 import java.io.IOException;
+import java.io.Reader;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -51,8 +53,8 @@ public class TestIndexer implements Indexer {
      **/
     @Override
     public ListenableFuture<Boolean> update(final String pid,
-            final String content) throws IOException {
-        LOGGER.debug("Received update for: {}", pid);
+            final Reader content) throws IOException {
+        LOGGER.debug("Received update for identifier: {}", pid);
         final ListenableFutureTask<Boolean> result = ListenableFutureTask.create(new Callable<Boolean>() {
 
             @Override
@@ -76,7 +78,7 @@ public class TestIndexer implements Indexer {
     @Override
     public ListenableFuture<Boolean> remove(final String pid)
         throws IOException {
-        LOGGER.debug("Received remove for: {}", pid);
+        LOGGER.debug("Received remove for identifier: {}", pid);
         final ListenableFutureTask<Boolean> result = ListenableFutureTask.create(new Callable<Boolean>() {
 
             @Override
@@ -110,5 +112,10 @@ public class TestIndexer implements Indexer {
         LOGGER.debug("Checked whether we received a remove for: {}, {}", pid,
                 removes.contains(pid));
         return removes.contains(pid);
+    }
+
+    @Override
+    public IndexerType getIndexerType() {
+        return NOOP;
     }
 }

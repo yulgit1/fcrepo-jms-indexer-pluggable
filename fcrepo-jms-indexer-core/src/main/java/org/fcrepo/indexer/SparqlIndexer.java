@@ -16,17 +16,18 @@
 
 package org.fcrepo.indexer;
 
+import static com.hp.hpl.jena.rdf.model.ModelFactory.createDefaultModel;
 import static com.hp.hpl.jena.sparql.util.Context.emptyContext;
 import static com.hp.hpl.jena.update.UpdateExecutionFactory.createRemoteForm;
+import static org.fcrepo.indexer.Indexer.IndexerType.RDF;
 import static org.slf4j.LoggerFactory.getLogger;
 
-import java.io.StringReader;
+import java.io.Reader;
 import java.util.HashSet;
 import java.util.Iterator;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListenableFutureTask;
 import com.hp.hpl.jena.rdf.model.Model;
-import com.hp.hpl.jena.rdf.model.ModelFactory;
 import com.hp.hpl.jena.rdf.model.StmtIterator;
 import com.hp.hpl.jena.graph.Node_URI;
 import com.hp.hpl.jena.graph.Triple;
@@ -44,7 +45,8 @@ import org.slf4j.Logger;
  * Indexes triples from Fedora into a triplestore using SPARQL Update.
  *
  * @author Esmé Cowles
- *         Date: Aug 19, 2013
+ * @author ajs6f
+ * @date Aug 19, 2013
 **/
 public class SparqlIndexer implements Indexer {
 
@@ -54,26 +56,7 @@ public class SparqlIndexer implements Indexer {
 
     private static final Logger LOGGER = getLogger(SparqlIndexer.class);
 
-    /**
-     * Set whether to use SPARQL Update or form updates.
-    **/
-    public void setFormUpdates( final boolean b ) {
-        this.formUpdates = b;
-    }
 
-    /**
-     * Set base URL for SPARQL Query requests.
-    **/
-    public void setQueryBase( final String url ) {
-        this.queryBase = url;
-    }
-
-    /**
-     * Set base URL for SPARQL Update requests.
-    **/
-    public void setUpdateBase( final String url ) {
-        this.updateBase = url;
-    }
 
     /**
      * Remove any current triples about the Fedora object and replace them with
@@ -81,14 +64,13 @@ public class SparqlIndexer implements Indexer {
      * @content RDF in N3 format.
     **/
     @Override
-    public ListenableFuture<Void> update( final String pid, final String content ) {
+    public ListenableFuture<Void> update( final String pid, final Reader content ) {
         LOGGER.debug("Received update for: {}", pid);
         // first remove old data
         remove(pid);
 
         // parse content into a model
-        final Model model = ModelFactory.createDefaultModel();
-        model.read( new StringReader(content), null, "N3");
+        final Model model = createDefaultModel().read(content, null, "N3");
 
         // build a list of triples
         final StmtIterator triples = model.listStatements();
@@ -116,7 +98,7 @@ public class SparqlIndexer implements Indexer {
         final Iterator<Triple> results = qexec.execDescribeTriples();
 
         // build list of triples to delete
-        final HashSet<String> uris = new HashSet<String>();
+        final HashSet<String> uris = new HashSet<>();
         while ( results.hasNext() ) {
             final Triple triple = results.next();
 
@@ -140,10 +122,10 @@ public class SparqlIndexer implements Indexer {
 
         // build update commands
         final UpdateRequest del = new UpdateRequest();
-        for ( final String uri : uris ) {
-            final String cmd = "delete where { <" + uri + "> ?p ?o }";
-            LOGGER.debug(cmd);
-            del.add( cmd );
+        for (final String uri : uris) {
+            final String cmd = "DELETE WHERE { <" + uri + "> ?p ?o }";
+            LOGGER.debug("Executing: {}", cmd);
+            del.add(cmd);
         }
 
         // send updates
@@ -202,5 +184,31 @@ public class SparqlIndexer implements Indexer {
         qexec.close();
 
         return triples;
+    }
+
+    @Override
+    public IndexerType getIndexerType() {
+        return RDF;
+    }
+
+    /**
+     * Set whether to use SPARQL Update or form updates.
+    **/
+    public void setFormUpdates( final boolean b ) {
+        this.formUpdates = b;
+    }
+
+    /**
+     * Set base URL for SPARQL Query requests.
+    **/
+    public void setQueryBase( final String url ) {
+        this.queryBase = url;
+    }
+
+    /**
+     * Set base URL for SPARQL Update requests.
+    **/
+    public void setUpdateBase( final String url ) {
+        this.updateBase = url;
     }
 }

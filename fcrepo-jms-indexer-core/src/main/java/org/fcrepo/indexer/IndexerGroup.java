@@ -17,22 +17,29 @@
 package org.fcrepo.indexer;
 
 import static com.google.common.base.Throwables.propagate;
-import static java.util.concurrent.TimeUnit.SECONDS;
+import static com.hp.hpl.jena.rdf.model.ResourceFactory.createProperty;
 import static javax.jcr.observation.Event.NODE_REMOVED;
 import static org.fcrepo.kernel.RdfLexicon.REPOSITORY_NAMESPACE;
 import static org.slf4j.LoggerFactory.getLogger;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.io.StringReader;
 import java.util.Set;
 
 import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.MessageListener;
 
+import org.apache.http.HttpException;
 import org.apache.http.client.HttpClient;
 import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.impl.conn.PoolingClientConnectionManager;
 import org.fcrepo.kernel.utils.EventType;
 import org.slf4j.Logger;
+
+import com.hp.hpl.jena.rdf.model.Property;
 
 
 /**
@@ -53,28 +60,41 @@ public class IndexerGroup implements MessageListener {
 
     private Set<Indexer> indexers;
 
-    private HttpClient httpclient;
+    private final HttpClient httpClient;
 
-    private static final String REMOVAL_EVENT_TYPE = REPOSITORY_NAMESPACE
-            + EventType.valueOf(NODE_REMOVED).toString();
 
-    //pid
+    /**
+     * Identifier message header
+     */
     private static final String IDENTIFIER_HEADER_NAME = REPOSITORY_NAMESPACE
             + "identifier";
 
-    //eventType - purgeObject
+    /**
+     * Event type message header
+     */
     private static final String EVENT_TYPE_HEADER_NAME = REPOSITORY_NAMESPACE
             + "eventType";
+
+    /**
+     * Type of event that qualifies as a removal.
+     */
+    private static final String REMOVAL_EVENT_TYPE = REPOSITORY_NAMESPACE
+            + EventType.valueOf(NODE_REMOVED).toString();
+
+    /**
+     * Indicates the transformation to use with this resource to derive indexing information.
+     */
+    public static final Property INDEXING_TRANSFORM_PREDICATE =
+        createProperty(REPOSITORY_NAMESPACE + "hasIndexingTransformation");
+
+    private static final Reader EMPTY_CONTENT = null;
 
     /**
      * Default constructor.
      **/
     public IndexerGroup() {
         LOGGER.debug("Creating IndexerGroup: {}", this);
-        final PoolingClientConnectionManager p = new PoolingClientConnectionManager();
-        p.setDefaultMaxPerRoute(5);
-        p.closeIdleConnections(3, SECONDS);
-        httpclient = new DefaultHttpClient(p);
+        this.httpClient = new DefaultHttpClient();
     }
 
     /**
@@ -123,14 +143,48 @@ public class IndexerGroup implements MessageListener {
             final String eventType = message.getStringProperty(EVENT_TYPE_HEADER_NAME);
 
             LOGGER.debug("Discovered pid: {} in message.", pid);
-            LOGGER.debug("Discovered event Type: {} in message.", eventType);
+            LOGGER.debug("Discovered event type: {} in message.", eventType);
 
             final Boolean removal = REMOVAL_EVENT_TYPE.equals(eventType);
-            final String content = "<info:example.com/test_pid> <info:example.com/predicate> \" test value \"";
-            final boolean hasContent = true; //temp
-            LOGGER.debug("It is {} that this is a removal operation.",
-                        removal);
+            LOGGER.debug("It is {} that this is a removal operation.", removal);
+
+            final NamedFieldsRetriever nfr =
+                new NamedFieldsRetriever(getRepositoryURL() + pid, httpClient);
+            final RdfRetriever rdfr =
+                new RdfRetriever(getRepositoryURL() + pid, httpClient);
+
             for (final Indexer indexer : indexers) {
+                LOGGER.debug("Operating for indexer: {}", indexer);
+                Boolean hasContent = false;
+                Reader content = EMPTY_CONTENT;
+                if (!removal) {
+                    switch (indexer.getIndexerType()) {
+                        case NAMEDFIELDS:
+                            try (final InputStream result = nfr.call()) {
+                                content = new InputStreamReader(result);
+                                hasContent = true;
+                            } catch (final CannotTransformToNamedFieldsException e) {
+                                hasContent = false;
+                            } catch (final IOException e) {
+                                LOGGER.error(
+                                        "Could not retrieve content for update!",
+                                        e);
+                            }
+                        case RDF:
+                            try (final InputStream result = rdfr.call()) {
+                                content = new InputStreamReader(result);
+                                hasContent = true;
+                            } catch (IOException | HttpException e) {
+                                LOGGER.error(
+                                        "Could not retrieve content for update!",
+                                        e);
+                            }
+                        default:
+                            content = new StringReader(pid);
+                            hasContent = true;
+                    }
+                }
+
                 try {
                     if (removal) {
                         indexer.remove(pid);
