@@ -29,6 +29,8 @@ import org.apache.http.client.ClientProtocolException;
 
 
 /**
+ * {@link IndexableContentRetriever} that caches its results.
+ *
  * @author ajs6f
  * @date Dec 7, 2013
  */
@@ -43,7 +45,7 @@ public abstract class CachingRetriever implements IndexableContentRetriever {
      */
     @Override
     public InputStream call() throws ClientProtocolException, IOException,
-        CannotTransformToNamedFieldsException, HttpException {
+        AbsentTransformPropertyException, HttpException {
         if (cached) {
             return new ByteArrayInputStream(cache);
         }
@@ -56,7 +58,7 @@ public abstract class CachingRetriever implements IndexableContentRetriever {
     }
 
     protected abstract HttpResponse retrieveHttpResponse()
-        throws CannotTransformToNamedFieldsException,
+        throws AbsentTransformPropertyException,
         ClientProtocolException, IOException, HttpException;
 
 }

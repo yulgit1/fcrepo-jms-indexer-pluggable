@@ -22,11 +22,12 @@ import static org.fcrepo.indexer.IndexerGroup.INDEXING_TRANSFORM_PREDICATE;
 import static org.slf4j.LoggerFactory.getLogger;
 
 import java.io.IOException;
+
+import org.apache.http.HttpException;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
-import org.apache.jena.riot.RiotNotFoundException;
 import org.slf4j.Logger;
 
 import com.hp.hpl.jena.rdf.model.Model;
@@ -45,35 +46,33 @@ public class NamedFieldsRetriever extends CachingRetriever {
 
     private final HttpClient httpClient;
 
+    private final RdfRetriever rdfr;
+
     private static final Logger LOGGER = getLogger(NamedFieldsRetriever.class);
 
     /**
      * @param uri
      * @param client
      */
-    public NamedFieldsRetriever(final String uri, final HttpClient client) {
+    public NamedFieldsRetriever(final String uri, final HttpClient client,
+        final RdfRetriever rdfr) {
         this.uri = uri;
         this.httpClient = client;
+        this.rdfr = rdfr;
     }
 
     @Override
-    public HttpResponse retrieveHttpResponse() throws CannotTransformToNamedFieldsException,
-        ClientProtocolException, IOException {
+    public HttpResponse retrieveHttpResponse() throws AbsentTransformPropertyException,
+        ClientProtocolException, IOException, HttpException {
         LOGGER.debug("Retrieving RDF representation from: {}", uri);
-        String transformKey;
-        try {
-            final Model rdf = createDefaultModel().read(uri);
-            if (!rdf.contains(createResource(uri), INDEXING_TRANSFORM_PREDICATE)) {
-                throw new CannotTransformToNamedFieldsException(uri);
-            }
-            final RDFNode indexingTransform =
-                rdf.listObjectsOfProperty(createResource(uri),
-                        INDEXING_TRANSFORM_PREDICATE).next();
-            transformKey = indexingTransform.asLiteral().getString();
-        } catch (final RiotNotFoundException e) {
-            LOGGER.error("Couldn't retrieve representation of resource to determine its indexability!");
-            throw new CannotTransformToNamedFieldsException(uri);
+        final Model rdf = createDefaultModel().read(rdfr.call(), null);
+        if (!rdf.contains(createResource(uri), INDEXING_TRANSFORM_PREDICATE)) {
+            throw new AbsentTransformPropertyException(uri);
         }
+        final RDFNode indexingTransform =
+            rdf.listObjectsOfProperty(createResource(uri),
+                    INDEXING_TRANSFORM_PREDICATE).next();
+        final String transformKey = indexingTransform.asLiteral().getString();
 
         LOGGER.debug("Discovered transform key: {}", transformKey);
         final HttpGet transformedResourceRequest =

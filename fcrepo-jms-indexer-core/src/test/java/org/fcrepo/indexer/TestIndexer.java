@@ -16,7 +16,7 @@
 
 package org.fcrepo.indexer;
 
-import static org.fcrepo.indexer.Indexer.IndexerType.NOOP;
+import static org.fcrepo.indexer.Indexer.IndexerType.NO_CONTENT;
 import static org.slf4j.LoggerFactory.getLogger;
 
 import java.io.IOException;
@@ -116,6 +116,6 @@ public class TestIndexer implements Indexer {
 
     @Override
     public IndexerType getIndexerType() {
-        return NOOP;
+        return NO_CONTENT;
     }
 }

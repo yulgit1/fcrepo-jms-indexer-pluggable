@@ -48,6 +48,6 @@ public interface Indexer {
     public IndexerType getIndexerType();
 
     public static enum IndexerType {
-        NAMEDFIELDS, RDF, NOOP
+        NAMEDFIELDS, RDF, NO_CONTENT
     }
 }

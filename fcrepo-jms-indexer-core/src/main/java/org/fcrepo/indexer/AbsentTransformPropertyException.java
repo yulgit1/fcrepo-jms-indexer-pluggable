@@ -24,7 +24,7 @@ package org.fcrepo.indexer;
  * @author ajs6f
  * @date Dec 4, 2013
  */
-public class CannotTransformToNamedFieldsException extends Exception {
+public class AbsentTransformPropertyException extends Exception {
 
     /**
      *
@@ -34,7 +34,7 @@ public class CannotTransformToNamedFieldsException extends Exception {
     /**
      * @param msg
      */
-    public CannotTransformToNamedFieldsException(final String msg) {
+    public AbsentTransformPropertyException(final String msg) {
         super(msg);
     }
 

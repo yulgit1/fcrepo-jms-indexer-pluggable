@@ -148,10 +148,11 @@ public class IndexerGroup implements MessageListener {
             final Boolean removal = REMOVAL_EVENT_TYPE.equals(eventType);
             LOGGER.debug("It is {} that this is a removal operation.", removal);
 
-            final NamedFieldsRetriever nfr =
-                new NamedFieldsRetriever(getRepositoryURL() + pid, httpClient);
             final RdfRetriever rdfr =
                 new RdfRetriever(getRepositoryURL() + pid, httpClient);
+            final NamedFieldsRetriever nfr =
+                new NamedFieldsRetriever(getRepositoryURL() + pid, httpClient,
+                        rdfr);
 
             for (final Indexer indexer : indexers) {
                 LOGGER.debug("Operating for indexer: {}", indexer);
@@ -168,7 +169,7 @@ public class IndexerGroup implements MessageListener {
                                         "Could not retrieve content for update!",
                                         e);
                                 hasContent = false;
-                            } catch (final CannotTransformToNamedFieldsException e) {
+                            } catch (final AbsentTransformPropertyException e) {
                                 hasContent = false;
                             }
                         case RDF:
@@ -180,7 +181,7 @@ public class IndexerGroup implements MessageListener {
                                         "Could not retrieve content for update!",
                                         e);
                                 hasContent = false;
-                            } catch (final CannotTransformToNamedFieldsException e1) {
+                            } catch (final AbsentTransformPropertyException e1) {
                                 hasContent = false;
                             }
                         default:
