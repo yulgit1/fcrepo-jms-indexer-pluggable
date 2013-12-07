@@ -8,6 +8,7 @@ FedoraRepository/
 indexes/
 ObjectStore/
 */.cache
+fcrepo-jms-indexer-core/data/**
 .cache
 .DS_Store
 *~

@@ -21,10 +21,7 @@ import static com.hp.hpl.jena.rdf.model.ResourceFactory.createResource;
 import static org.fcrepo.indexer.IndexerGroup.INDEXING_TRANSFORM_PREDICATE;
 import static org.slf4j.LoggerFactory.getLogger;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
@@ -42,17 +39,13 @@ import com.hp.hpl.jena.rdf.model.RDFNode;
  * @author ajs6f
  * @date Dec 6, 2013
  */
-public class NamedFieldsRetriever implements IndexableContentRetriever {
+public class NamedFieldsRetriever extends CachingRetriever {
 
     private final String uri;
 
     private final HttpClient httpClient;
 
     private static final Logger LOGGER = getLogger(NamedFieldsRetriever.class);
-
-    private Boolean cached = false;
-
-    private byte[] cache;
 
     /**
      * @param uri
@@ -64,10 +57,8 @@ public class NamedFieldsRetriever implements IndexableContentRetriever {
     }
 
     @Override
-    public InputStream call() throws CannotTransformToNamedFieldsException, ClientProtocolException, IOException {
-        if (cached) {
-            return new ByteArrayInputStream(cache);
-        }
+    public HttpResponse retrieveHttpResponse() throws CannotTransformToNamedFieldsException,
+        ClientProtocolException, IOException {
         LOGGER.debug("Retrieving RDF representation from: {}", uri);
         String transformKey;
         try {
@@ -89,14 +80,8 @@ public class NamedFieldsRetriever implements IndexableContentRetriever {
             new HttpGet(uri + "/fcr:transform/" + transformKey);
         LOGGER.debug("Retrieving transformed resource from: {}",
                 transformedResourceRequest.getURI());
-        final HttpResponse transformedResourceResponse =
+        return
             httpClient.execute(transformedResourceRequest);
-        try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            transformedResourceResponse.getEntity().writeTo(out);
-            cache = out.toByteArray();
-        }
-        cached = true;
-        return new ByteArrayInputStream(cache);
     }
 
 }

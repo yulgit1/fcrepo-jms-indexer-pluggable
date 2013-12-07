@@ -8,7 +8,7 @@
        http://www.springframework.org/schema/lang http://www.springframework.org/schema/lang/spring-lang-2.0.xsd">
 
   <!-- sparql-update indexer -->
-  <bean id="sparqlUpdate" class="org.fcrepo.indexer.SparqlIndexer">
+  <bean id="sparqlUpdate" class="org.fcrepo.indexer.sparql.SparqlIndexer">
 
     <!-- fuseki -->
     <property name="queryBase"

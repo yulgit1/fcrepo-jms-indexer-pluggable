@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-package org.fcrepo.indexer.integration;
+package org.fcrepo.indexer.integration.sparql;
 
 import java.io.StringReader;
 
 import javax.inject.Inject;
 
-import org.fcrepo.indexer.SparqlIndexer;
+import org.fcrepo.indexer.sparql.SparqlIndexer;
 import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.springframework.test.context.ContextConfiguration;

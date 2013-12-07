@@ -18,10 +18,7 @@ package org.fcrepo.indexer;
 
 import static org.apache.http.HttpStatus.SC_OK;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 
 import org.apache.http.HttpException;
 import org.apache.http.HttpResponse;
@@ -38,17 +35,13 @@ import org.apache.http.client.methods.HttpUriRequest;
  * @author ajs6f
  * @date Dec 6, 2013
  */
-public class RdfRetriever implements IndexableContentRetriever {
+public class RdfRetriever extends CachingRetriever {
 
     private static final String RDF_SERIALIZATION = "application/rdf+xml";
 
     private final String identifier;
 
     private final HttpClient httpClient;
-
-    private Boolean cached = false;
-
-    private byte[] cache;
 
     /**
      * @param identifier
@@ -60,21 +53,13 @@ public class RdfRetriever implements IndexableContentRetriever {
     }
 
     @Override
-    public InputStream call() throws ClientProtocolException, IOException,
+    public HttpResponse retrieveHttpResponse() throws ClientProtocolException, IOException,
         HttpException {
-        if (cached) {
-            return new ByteArrayInputStream(cache);
-        }
         final HttpUriRequest request = new HttpGet(identifier);
         request.addHeader("Accept", RDF_SERIALIZATION);
         final HttpResponse response = httpClient.execute(request);
         if (response.getStatusLine().getStatusCode() == SC_OK) {
-            try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-                response.getEntity().writeTo(out);
-                cache = out.toByteArray();
-            }
-            cached = true;
-            return new ByteArrayInputStream(cache);
+            return response;
         } else {
             throw new HttpException(response.getStatusLine().getReasonPhrase());
         }

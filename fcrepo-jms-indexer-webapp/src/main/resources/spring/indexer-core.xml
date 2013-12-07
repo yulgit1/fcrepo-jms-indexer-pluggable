@@ -4,7 +4,7 @@
        xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
 
   <!-- sparql-update indexer -->
-  <bean id="sparqlUpdate" class="org.fcrepo.indexer.SparqlIndexer">
+  <bean id="sparqlUpdate" class="org.fcrepo.indexer.sparql.SparqlIndexer">
 
     <!-- fuseki -->
     <property name="queryBase" value="http://${fuseki.host:localhost}:${fuseki.port:3030}/test/query"/>

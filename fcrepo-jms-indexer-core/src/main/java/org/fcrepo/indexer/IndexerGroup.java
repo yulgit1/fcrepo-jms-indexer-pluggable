@@ -163,12 +163,13 @@ public class IndexerGroup implements MessageListener {
                             try (final InputStream result = nfr.call()) {
                                 content = new InputStreamReader(result);
                                 hasContent = true;
-                            } catch (final CannotTransformToNamedFieldsException e) {
-                                hasContent = false;
-                            } catch (final IOException e) {
+                            } catch (final IOException | HttpException e) {
                                 LOGGER.error(
                                         "Could not retrieve content for update!",
                                         e);
+                                hasContent = false;
+                            } catch (final CannotTransformToNamedFieldsException e) {
+                                hasContent = false;
                             }
                         case RDF:
                             try (final InputStream result = rdfr.call()) {
@@ -178,6 +179,9 @@ public class IndexerGroup implements MessageListener {
                                 LOGGER.error(
                                         "Could not retrieve content for update!",
                                         e);
+                                hasContent = false;
+                            } catch (final CannotTransformToNamedFieldsException e1) {
+                                hasContent = false;
                             }
                         default:
                             content = new StringReader(pid);

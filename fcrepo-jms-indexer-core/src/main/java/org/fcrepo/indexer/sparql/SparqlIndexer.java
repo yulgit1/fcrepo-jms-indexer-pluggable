@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.fcrepo.indexer;
+package org.fcrepo.indexer.sparql;
 
 import static com.hp.hpl.jena.rdf.model.ModelFactory.createDefaultModel;
 import static com.hp.hpl.jena.sparql.util.Context.emptyContext;
@@ -38,6 +38,8 @@ import com.hp.hpl.jena.sparql.modify.request.UpdateDataInsert;
 import com.hp.hpl.jena.update.UpdateProcessor;
 import com.hp.hpl.jena.update.UpdateRequest;
 
+import org.fcrepo.indexer.Indexer;
+import org.fcrepo.indexer.Indexer.IndexerType;
 import org.slf4j.Logger;
 
 
