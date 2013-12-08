@@ -16,7 +16,7 @@
 
 package org.fcrepo.indexer.sparql;
 
-import static com.google.common.util.concurrent.Futures.immediateFuture;
+import static com.google.common.base.Throwables.propagate;
 import static com.google.common.util.concurrent.MoreExecutors.listeningDecorator;
 import static com.hp.hpl.jena.rdf.model.ModelFactory.createDefaultModel;
 import static com.hp.hpl.jena.sparql.util.Context.emptyContext;
@@ -31,8 +31,8 @@ import java.io.OutputStream;
 import java.io.Reader;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.concurrent.Callable;
 
-import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListenableFutureTask;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.hp.hpl.jena.rdf.model.Model;
@@ -47,7 +47,7 @@ import com.hp.hpl.jena.update.UpdateProcessor;
 import com.hp.hpl.jena.update.UpdateRequest;
 
 import org.apache.jena.atlas.io.IndentedWriter;
-import org.fcrepo.indexer.Indexer;
+import org.fcrepo.indexer.AsynchIndexer;
 import org.slf4j.Logger;
 
 
@@ -58,7 +58,7 @@ import org.slf4j.Logger;
  * @author ajs6f
  * @date Aug 19, 2013
 **/
-public class SparqlIndexer implements Indexer {
+public class SparqlIndexer extends AsynchIndexer<Void> {
 
     private String queryBase;
     private String updateBase;
@@ -80,10 +80,14 @@ public class SparqlIndexer implements Indexer {
      * @content RDF in N3 format.
     **/
     @Override
-    public ListenableFuture<Void> update( final String pid, final Reader content ) {
+    public ListenableFutureTask<Void> updateSynch( final String pid, final Reader content ) {
         LOGGER.debug("Received update for: {}", pid);
         // first remove old data
-        remove(pid);
+        try {
+            remove(pid);
+        } catch (final IOException e) {
+            propagate(e);
+        }
 
         // parse content into a model
         final Model model = createDefaultModel().read(content, null, "N3");
@@ -105,7 +109,7 @@ public class SparqlIndexer implements Indexer {
      * all triples with subjects starting with the same subject.
     **/
     @Override
-    public ListenableFuture<Void> remove(final String subject) {
+    public ListenableFutureTask<Void> removeSynch(final String subject) {
 
         LOGGER.debug("Received remove for: {}", subject);
         // find triples/quads to delete
@@ -158,11 +162,18 @@ public class SparqlIndexer implements Indexer {
             || uri1.startsWith(uri2 + "#");
     }
 
-    private ListenableFuture<Void> exec(final UpdateRequest update) {
+    private ListenableFutureTask<Void> exec(final UpdateRequest update) {
         if (update.getOperations().isEmpty()) {
             LOGGER.debug("Received empty update/remove operation.");
-            return immediateFuture((Void) null);
+            return ListenableFutureTask.create(new Callable<Void>() {
+
+                @Override
+                public Void call() throws Exception {
+                    return null;
+                }
+            });
         }
+
         final ListenableFutureTask<Void> task =
             ListenableFutureTask.create(new Runnable() {
 
@@ -258,4 +269,11 @@ public class SparqlIndexer implements Indexer {
     public void setUpdateBase( final String url ) {
         this.updateBase = url;
     }
+
+    @Override
+    public ListeningExecutorService executorService() {
+        return executorService;
+    }
+
+
 }

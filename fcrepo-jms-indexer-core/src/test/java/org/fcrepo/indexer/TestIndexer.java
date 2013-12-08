@@ -105,7 +105,7 @@ public class TestIndexer extends  AsynchIndexer<Boolean> {
     }
 
     @Override
-    ListeningExecutorService executorService() {
+    public ListeningExecutorService executorService() {
         return executorService;
     }
 }

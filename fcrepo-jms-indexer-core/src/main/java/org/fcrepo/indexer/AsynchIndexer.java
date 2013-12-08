@@ -38,7 +38,10 @@ public abstract class AsynchIndexer<T> implements Indexer {
 
     private static final Logger LOGGER = getLogger(AsynchIndexer.class);
 
-    abstract ListeningExecutorService executorService();
+    /**
+     * @return The {@link ListeningExecutorService} to use for operation.
+     */
+    public abstract ListeningExecutorService executorService();
 
     @Override
     public ListenableFuture<T> update(final String identifier,
@@ -75,9 +78,18 @@ public abstract class AsynchIndexer<T> implements Indexer {
         return task;
     }
 
-    abstract ListenableFutureTask<T> removeSynch(final String identifier);
+    /**
+     * @param identifier
+     * @return
+     */
+    public abstract ListenableFutureTask<T> removeSynch(final String identifier);
 
-    abstract ListenableFutureTask<T> updateSynch(final String identifier,
+    /**
+     * @param identifier
+     * @param content
+     * @return
+     */
+    public abstract ListenableFutureTask<T> updateSynch(final String identifier,
             final Reader content);
 
 }
