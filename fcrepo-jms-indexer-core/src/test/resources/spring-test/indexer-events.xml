@@ -29,7 +29,7 @@
     <property name="connectionFactory" ref="connectionFactory"/>
     <property name="destination" ref="destination"/>
     <property name="messageListener" ref="indexerGroup" />
-    <property name="sessionTransacted" value="true"/>
+    <property name="sessionTransacted" value="false"/>
   </bean>
 
 </beans>

@@ -65,8 +65,11 @@ public class NamedFieldsRetriever extends CachingRetriever {
     public HttpResponse retrieveHttpResponse() throws AbsentTransformPropertyException,
         ClientProtocolException, IOException, HttpException {
         LOGGER.debug("Retrieving RDF representation from: {}", uri);
-        final Model rdf = createDefaultModel().read(rdfr.call(), null);
+        final Model rdf = createDefaultModel().read(rdfr.call(), null, "N3");
         if (!rdf.contains(createResource(uri), INDEXING_TRANSFORM_PREDICATE)) {
+            LOGGER.info(
+                    "Found no property locating LDPath transform for: {}, will not retrieve transformed content.",
+                    uri);
             throw new AbsentTransformPropertyException(uri);
         }
         final RDFNode indexingTransform =

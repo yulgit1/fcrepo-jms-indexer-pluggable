@@ -50,6 +50,9 @@ import com.google.gson.GsonBuilder;
  */
 public class SolrIndexer implements Indexer {
 
+    public static final String CONFIGURATION_FOLDER =
+        "fedora:system/fedora:transform/fedora:ldpath/";
+
     private final SolrServer server;
 
     private static final Logger LOGGER = getLogger(SolrIndexer.class);
@@ -138,9 +141,11 @@ public class SolrIndexer implements Indexer {
         }));
     }
 
-    private static <T> ListenableFuture<T> run(
-            final ListenableFutureTask<T> task) {
-        task.run();
+    private <T> ListenableFuture<T> run(final ListenableFutureTask<T> task) {
+        synchronized (this) {
+            task.run();
+            notifyAll();
+        }
         return task;
     }
 

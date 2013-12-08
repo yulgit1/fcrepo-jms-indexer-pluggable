@@ -18,6 +18,8 @@
  */
 package org.fcrepo.indexer;
 
+import static org.slf4j.LoggerFactory.getLogger;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -26,6 +28,7 @@ import java.io.InputStream;
 import org.apache.http.HttpException;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
+import org.slf4j.Logger;
 
 
 /**
@@ -40,6 +43,9 @@ public abstract class CachingRetriever implements IndexableContentRetriever {
 
     private byte[] cache;
 
+    private static final Logger LOGGER = getLogger(CachingRetriever.class);
+
+
     /* (non-Javadoc)
      * @see java.util.concurrent.Callable#call()
      */
@@ -47,13 +53,16 @@ public abstract class CachingRetriever implements IndexableContentRetriever {
     public InputStream call() throws ClientProtocolException, IOException,
         AbsentTransformPropertyException, HttpException {
         if (cached) {
+            LOGGER.debug("Returning cached content...");
             return new ByteArrayInputStream(cache);
         }
+        LOGGER.debug("Retrieving uncached content...");
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             retrieveHttpResponse().getEntity().writeTo(out);
             cache = out.toByteArray();
         }
         cached = true;
+        LOGGER.debug("Retrieved cache-able content:\n{}", new String(cache));
         return new ByteArrayInputStream(cache);
     }
 

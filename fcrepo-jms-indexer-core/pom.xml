@@ -109,11 +109,23 @@
       <groupId>org.apache.jena</groupId>
       <artifactId>jena-fuseki</artifactId>
       <scope>test</scope>
+<!--       <exclusions>
+        <exclusion>
+          <artifactId>log4j</artifactId>
+          <groupId>log4j</groupId>
+        </exclusion>
+      </exclusions> -->
     </dependency>
     <!-- Start of Solr Indexer libs -->
     <dependency>
       <groupId>org.apache.solr</groupId>
       <artifactId>solr-core</artifactId>
+      <exclusions>
+        <exclusion>
+          <artifactId>log4j</artifactId>
+          <groupId>log4j</groupId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <!--   <dependency>
       <groupId>org.apache.solr</groupId>

@@ -16,9 +16,11 @@
 
 package org.fcrepo.indexer.sparql;
 
+import static com.google.common.util.concurrent.MoreExecutors.listeningDecorator;
 import static com.hp.hpl.jena.rdf.model.ModelFactory.createDefaultModel;
 import static com.hp.hpl.jena.sparql.util.Context.emptyContext;
 import static com.hp.hpl.jena.update.UpdateExecutionFactory.createRemoteForm;
+import static java.util.concurrent.Executors.newFixedThreadPool;
 import static org.fcrepo.indexer.Indexer.IndexerType.RDF;
 import static org.slf4j.LoggerFactory.getLogger;
 
@@ -27,6 +29,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListenableFutureTask;
+import com.google.common.util.concurrent.ListeningExecutorService;
 import com.hp.hpl.jena.rdf.model.Model;
 import com.hp.hpl.jena.rdf.model.StmtIterator;
 import com.hp.hpl.jena.graph.Node_URI;
@@ -39,7 +42,6 @@ import com.hp.hpl.jena.update.UpdateProcessor;
 import com.hp.hpl.jena.update.UpdateRequest;
 
 import org.fcrepo.indexer.Indexer;
-import org.fcrepo.indexer.Indexer.IndexerType;
 import org.slf4j.Logger;
 
 
@@ -58,7 +60,8 @@ public class SparqlIndexer implements Indexer {
 
     private static final Logger LOGGER = getLogger(SparqlIndexer.class);
 
-
+    private ListeningExecutorService executorService =
+        listeningDecorator(newFixedThreadPool(10));
 
     /**
      * Remove any current triples about the Fedora object and replace them with
@@ -164,7 +167,7 @@ public class SparqlIndexer implements Indexer {
                     }
                 }
             }, null);
-        task.run();
+        executorService.submit(task);
         return task;
     }
 

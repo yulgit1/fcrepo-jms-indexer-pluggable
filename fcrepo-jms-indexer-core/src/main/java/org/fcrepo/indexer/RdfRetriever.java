@@ -17,6 +17,7 @@
 package org.fcrepo.indexer;
 
 import static org.apache.http.HttpStatus.SC_OK;
+import static org.slf4j.LoggerFactory.getLogger;
 
 import java.io.IOException;
 
@@ -26,6 +27,8 @@ import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpUriRequest;
+import org.apache.jena.riot.WebContent;
+import org.slf4j.Logger;
 
 /**
  * Retrieves RDF representations of resources for storage in a triplestore.
@@ -37,11 +40,14 @@ import org.apache.http.client.methods.HttpUriRequest;
  */
 public class RdfRetriever extends CachingRetriever {
 
-    private static final String RDF_SERIALIZATION = "application/rdf+xml";
+    private static final String RDF_SERIALIZATION = WebContent.contentTypeN3;
 
     private final String identifier;
 
     private final HttpClient httpClient;
+
+    private static final Logger LOGGER = getLogger(RdfRetriever.class);
+
 
     /**
      * @param identifier
@@ -57,11 +63,12 @@ public class RdfRetriever extends CachingRetriever {
         HttpException {
         final HttpUriRequest request = new HttpGet(identifier);
         request.addHeader("Accept", RDF_SERIALIZATION);
+        LOGGER.debug("Retrieving RDF content from: {}...", request.getURI());
         final HttpResponse response = httpClient.execute(request);
         if (response.getStatusLine().getStatusCode() == SC_OK) {
             return response;
         } else {
-            throw new HttpException(response.getStatusLine().getReasonPhrase());
+            throw new HttpException(response.getStatusLine().toString());
         }
     }
 

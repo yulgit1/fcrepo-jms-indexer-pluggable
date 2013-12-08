@@ -16,6 +16,7 @@
 
 package org.fcrepo.indexer.integration;
 
+import static java.lang.Integer.MAX_VALUE;
 import static java.lang.Integer.parseInt;
 import static java.lang.System.currentTimeMillis;
 import static java.lang.System.getProperty;
@@ -30,6 +31,7 @@ import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.impl.conn.PoolingClientConnectionManager;
 import org.fcrepo.indexer.IndexerGroup;
 import org.fcrepo.indexer.TestIndexer;
 import org.junit.Before;
@@ -55,20 +57,24 @@ public class IndexerGroupIT {
     private static final String serverAddress = "http://localhost:"
             + SERVER_PORT + "/";
 
-    private static final long TIMEOUT = 10000;
+    private static final long TIMEOUT = 15000;
 
     private static HttpClient client;
+
+    @Before
+    public void setUp() {
+        final PoolingClientConnectionManager connMann =
+            new PoolingClientConnectionManager();
+        connMann.setMaxTotal(MAX_VALUE);
+        connMann.setDefaultMaxPerRoute(MAX_VALUE);
+        client = new DefaultHttpClient(connMann);
+    }
 
     @Inject
     private IndexerGroup indexerGroup;
 
     @Inject
     private TestIndexer testIndexer;
-
-    @Before
-    public void setup() {
-        client = new DefaultHttpClient();
-    }
 
     @Test
     public void testIndexerGroupUpdate() throws Exception {
@@ -104,10 +110,9 @@ public class IndexerGroupIT {
         final String pid = "/removeTestPid";
         final String uri = serverAddress + pid;
         doIndexerGroupUpdateTest(pid);
-
         // delete dummy object
         final HttpDelete method = new HttpDelete(uri);
-        final HttpResponse response = new DefaultHttpClient().execute(method);
+        final HttpResponse response = client.execute(method);
         assertEquals(204, response.getStatusLine().getStatusCode());
         LOGGER.debug("Deleted object at: {}", uri);
 
@@ -126,4 +131,5 @@ public class IndexerGroupIT {
 
 
     }
+
 }
