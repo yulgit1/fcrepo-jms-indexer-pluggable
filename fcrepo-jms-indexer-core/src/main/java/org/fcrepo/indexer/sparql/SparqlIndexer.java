@@ -66,8 +66,13 @@ public class SparqlIndexer implements Indexer {
 
     private static final Logger LOGGER = getLogger(SparqlIndexer.class);
 
+    /**
+     * Number of threads to use for operating against the triplestore.
+     */
+    private static final Integer THREAD_POOL_SIZE = 5;
+
     private ListeningExecutorService executorService =
-        listeningDecorator(newFixedThreadPool(10));
+        listeningDecorator(newFixedThreadPool(THREAD_POOL_SIZE));
 
     /**
      * Remove any current triples about the Fedora object and replace them with
@@ -187,17 +192,20 @@ public class SparqlIndexer implements Indexer {
 
             @Override
             public void run() {
-                try (final OutputStream buffer = new ByteArrayOutputStream()) {
-                    final IndentedWriter out = new IndentedWriter(buffer);
-                    update.output(out);
-                    LOGGER.trace(
-                            "Executed update/remove operation:\n{}",
-                            buffer.toString());
-                    out.close();
-                } catch (final IOException e) {
-                    LOGGER.error(
-                            "Couldn't retrieve execution of update/remove operation!",
-                            e);
+                LOGGER.debug("Completed Sparql update/removal.");
+                if (LOGGER.isTraceEnabled()) {
+                    try (
+                        final OutputStream buffer = new ByteArrayOutputStream()) {
+                        final IndentedWriter out = new IndentedWriter(buffer);
+                        update.output(out);
+                        LOGGER.trace("Executed update/remove operation:\n{}",
+                                buffer.toString());
+                        out.close();
+                    } catch (final IOException e) {
+                        LOGGER.error(
+                                "Couldn't retrieve execution of update/remove operation!",
+                                e);
+                    }
                 }
             }
         }, executorService);
