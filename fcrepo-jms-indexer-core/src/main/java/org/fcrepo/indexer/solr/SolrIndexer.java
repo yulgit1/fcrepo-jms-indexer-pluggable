@@ -51,7 +51,7 @@ import com.google.gson.GsonBuilder;
 public class SolrIndexer implements Indexer {
 
     public static final String CONFIGURATION_FOLDER =
-        "fedora:system/fedora:transform/fedora:ldpath/";
+        "/fedora:system/fedora:transform/fedora:ldpath/";
 
     private final SolrServer server;
 
@@ -76,6 +76,16 @@ public class SolrIndexer implements Indexer {
         deserializer.setGson(this.gson);
     }
 
+    /*
+     * (non-Javadoc)
+     * @see org.fcrepo.indexer.Indexer#update(java.lang.String, java.io.Reader)
+     * This method expects to receive a JSON input in {@param doc} that shows
+     * the following form:
+     * [{  "id" : ["myId"],
+     *     "myField" : ["myFieldValue"],
+     *     "myMultiValuedField" : ["value1", "value2"]
+     * }]
+     */
     @Override
     public ListenableFuture<UpdateResponse> update(final String pid,
             final Reader doc) {
@@ -142,10 +152,9 @@ public class SolrIndexer implements Indexer {
     }
 
     private <T> ListenableFuture<T> run(final ListenableFutureTask<T> task) {
-        synchronized (this) {
-            task.run();
-            notifyAll();
-        }
+        LOGGER.debug("Executing Solr update/remove...");
+        task.run();
+        LOGGER.debug("Solr update/remove executed.");
         return task;
     }
 

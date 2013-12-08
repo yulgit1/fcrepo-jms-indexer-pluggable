@@ -171,87 +171,95 @@ public class IndexerGroup implements MessageListener {
             final RdfRetriever rdfr = new RdfRetriever(uri, httpClient);
             final NamedFieldsRetriever nfr =
                 new NamedFieldsRetriever(uri, httpClient, rdfr);
-            final Model rdf =
-                createDefaultModel().read(rdfr.call(), null, "N3");
+            Boolean indexable = false;
 
-            if (rdf.contains(createResource(uri), type, INDEXABLE_MIXIN)) {
-                LOGGER.debug("Discovered indexable type on this resource.");
-                for (final Indexer indexer : getIndexers()) {
-                    LOGGER.debug("Operating for indexer: {}", indexer);
-                    Boolean hasContent = false;
-                    Reader content = EMPTY_CONTENT;
-                    if (!removal) {
-                        switch (indexer.getIndexerType()) {
-                            case NAMEDFIELDS:
-                                LOGGER.debug(
-                                        "Retrieving named fields for: {}, (may be cached) to index to {}...",
-                                        pid, indexer);
-                                try (final InputStream result = nfr.call()) {
-                                    content = new InputStreamReader(result);
-                                    hasContent = true;
-                                } catch (final IOException | HttpException e) {
-                                    LOGGER.error(
-                                            "Could not retrieve content for update of: {} to indexer {}!",
-                                            pid, indexer);
-                                    LOGGER.error("with exception:", e);
-                                    hasContent = false;
-                                } catch (final AbsentTransformPropertyException e) {
-                                    hasContent = false;
-                                }
-                                break;
-                            case RDF:
-                                LOGGER.debug(
-                                        "Retrieving RDF for: {}, (may be cached) to index to {}...",
-                                        pid, indexer);
-                                try (final InputStream result = rdfr.call()) {
-                                    content = new InputStreamReader(result);
-                                    hasContent = true;
-                                } catch (IOException | HttpException e) {
-                                    LOGGER.error(
-                                            "Could not retrieve content for update of: {} to indexer {}!",
-                                            pid, indexer);
-                                    LOGGER.error("with exception:", e);
-                                    hasContent = false;
-                                } catch (final AbsentTransformPropertyException e1) {
-                                    hasContent = false;
-                                }
-                                break;
-                            default:
-                                content =
-                                    new StringReader(
-                                            "Default content for update: "
-                                                    + pid);
-                                hasContent = true;
-                                break;
-                        }
-                    }
+            if (!removal) {
+                final Model rdf =
+                    createDefaultModel().read(rdfr.call(), null, "N3");
+                if (rdf.contains(createResource(uri), type, INDEXABLE_MIXIN)) {
+                    LOGGER.debug("Resource: {} retrieved with indexable type.",
+                            pid);
+                    indexable = true;
+                } else {
+                    LOGGER.debug(
+                            "Resource: {} retrieved without indexable type.",
+                            pid);
+                }
+            }
 
-                    try {
-                        if (removal) {
+            for (final Indexer indexer : getIndexers()) {
+                LOGGER.debug("Operating for indexer: {}", indexer);
+                Boolean hasContent = false;
+                Reader content = EMPTY_CONTENT;
+                if (!removal && indexable) {
+                    switch (indexer.getIndexerType()) {
+                        case NAMEDFIELDS:
                             LOGGER.debug(
-                                    "Executing removal of: {} to indexer: {}...",
+                                    "Retrieving named fields for: {}, (may be cached) to index to {}...",
                                     pid, indexer);
-                            indexer.remove(pid);
-                        } else {
-                            if (hasContent) {
-                                LOGGER.debug(
-                                        "Executing update of: {} to indexer: {}...",
-                                        pid, indexer);
-                                indexer.update(pid, content);
-                            } else {
+                            try (final InputStream result = nfr.call()) {
+                                content = new InputStreamReader(result);
+                                hasContent = true;
+                            } catch (final IOException | HttpException e) {
                                 LOGGER.error(
-                                        "Received update for: {} but was unable to retrieve "
-                                                + "content for update to indexer: {}!",
+                                        "Could not retrieve content for update of: {} to indexer {}!",
                                         pid, indexer);
+                                LOGGER.error("with exception:", e);
+                                hasContent = false;
+                            } catch (final AbsentTransformPropertyException e) {
+                                hasContent = false;
                             }
-                        }
-                    } catch (final Exception e) {
-                        LOGGER.error("Error indexing {}: {}!", pid, e);
+                            break;
+                        case RDF:
+                            LOGGER.debug(
+                                    "Retrieving RDF for: {}, (may be cached) to index to {}...",
+                                    pid, indexer);
+                            try (final InputStream result = rdfr.call()) {
+                                content = new InputStreamReader(result);
+                                hasContent = true;
+                            } catch (IOException | HttpException e) {
+                                LOGGER.error(
+                                        "Could not retrieve content for update of: {} to indexer {}!",
+                                        pid, indexer);
+                                LOGGER.error("with exception:", e);
+                                hasContent = false;
+                            } catch (final AbsentTransformPropertyException e1) {
+                                hasContent = false;
+                            }
+                            break;
+                        default:
+                            content =
+                                new StringReader("Default content for update: "
+                                        + pid);
+                            hasContent = true;
+                            break;
                     }
                 }
-            } else {
-                LOGGER.info("Resource retrieved without indexable type. Will not index.");
+
+                try {
+                    if (removal) {
+                        LOGGER.debug(
+                                "Executing removal of: {} to indexer: {}...",
+                                pid, indexer);
+                        indexer.remove(uri);
+                    } else {
+                        if (hasContent) {
+                            LOGGER.debug(
+                                    "Executing update of: {} to indexer: {}...",
+                                    pid, indexer);
+                            indexer.update(uri, content);
+                        } else if (indexable) {
+                            LOGGER.error(
+                                    "Received update for: {} but was unable to retrieve "
+                                            + "content for update to indexer: {}!",
+                                    pid, indexer);
+                        }
+                    }
+                } catch (final Exception e) {
+                    LOGGER.error("Error indexing {}: {}!", pid, e);
+                }
             }
+
         } catch (final JMSException | IOException | HttpException e) {
             LOGGER.error("Error processing JMS event!", e);
         } catch (final AbsentTransformPropertyException e2) {

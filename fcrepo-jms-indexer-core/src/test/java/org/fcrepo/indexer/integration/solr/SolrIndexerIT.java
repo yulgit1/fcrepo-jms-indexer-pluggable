@@ -57,13 +57,12 @@ public class SolrIndexerIT {
      */
     @Test
     public void testUpdate() throws SolrServerException {
-        doUpdate("123", "foobar");
+        doUpdate("123");
     }
 
-    private void doUpdate(final String pid, final String content)
-                                                            throws SolrServerException {
+    private void doUpdate(final String pid) throws SolrServerException {
         final String json =
-            "{\"id\" : \"" + pid + "\", \"content\":\"" + content + "\"}";
+            "[{\"id\" : [\"" + pid + "\"]}]";
         solrIndexer.update(pid, new StringReader(json));
         final SolrParams params = new SolrQuery("id:" + pid);
         final QueryResponse response = server.query(params);
@@ -79,7 +78,7 @@ public class SolrIndexerIT {
      */
     @Test
     public void testRemove() throws IOException, SolrServerException {
-        doUpdate("345", "foobar");
+        doUpdate("345");
         solrIndexer.remove("345");
         final SolrParams params = new SolrQuery("id:345");
         final QueryResponse response = server.query(params);

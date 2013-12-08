@@ -21,6 +21,7 @@ import static org.slf4j.LoggerFactory.getLogger;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
+import java.util.Collection;
 import java.util.Map;
 
 import org.apache.solr.common.SolrInputDocument;
@@ -44,7 +45,7 @@ import com.google.gson.stream.JsonWriter;
 public class SolrInputDocumentDeserializer extends
         TypeAdapter<SolrInputDocument> {
 
-    private static final Type type = new TypeToken<Map<String, JsonElement>>() {}
+    private static final Type type = new TypeToken<Collection<Map<String, JsonElement>>>() {}
             .getType();
 
     private Gson gson;
@@ -59,9 +60,11 @@ public class SolrInputDocumentDeserializer extends
 
             @Override
             public SolrInputField transformEntry(final String key,
-                    final JsonElement input) {
+                final JsonElement input) {
                 final SolrInputField field = new SolrInputField(key);
-                field.setValue(input.getAsString(), INDEX_TIME_BOOST);
+                for (final JsonElement value : input.getAsJsonArray()) {
+                    field.addValue(value.getAsString(), INDEX_TIME_BOOST);
+                }
                 return field;
             }
         };
@@ -74,9 +77,10 @@ public class SolrInputDocumentDeserializer extends
     @Override
     public SolrInputDocument read(final JsonReader in) throws IOException {
         try {
-            final Map<String, JsonElement> fields = gson.fromJson(in, type);
-            return new SolrInputDocument(transformEntries(fields,
-                    jsonElement2solrInputField));
+            final Collection<Map<String, JsonElement>> fields =
+                gson.fromJson(in, type);
+            return new SolrInputDocument(transformEntries(fields.iterator()
+                    .next(), jsonElement2solrInputField));
         } catch (final Exception e) {
             LOGGER.error("Failed to parse JSON to Solr update document!", e);
             throw e;

@@ -74,7 +74,7 @@ public class SolrIndexerTest {
     }
 
     private void doUpdate(final String pid) throws SolrServerException {
-        final String content = "{\"id\" : \"" +pid+ "\"}";
+        final String content = "[{\"id\" : [\"" +pid+ "\"]}]";
         LOGGER.debug(
                 "Trying update operation with identifier: {} and content: \"{}\".",
                 pid, content);

@@ -16,6 +16,7 @@
 
 package org.fcrepo.indexer.sparql;
 
+import static com.google.common.util.concurrent.Futures.immediateFuture;
 import static com.google.common.util.concurrent.MoreExecutors.listeningDecorator;
 import static com.hp.hpl.jena.rdf.model.ModelFactory.createDefaultModel;
 import static com.hp.hpl.jena.sparql.util.Context.emptyContext;
@@ -24,9 +25,13 @@ import static java.util.concurrent.Executors.newFixedThreadPool;
 import static org.fcrepo.indexer.Indexer.IndexerType.RDF;
 import static org.slf4j.LoggerFactory.getLogger;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.io.Reader;
 import java.util.HashSet;
 import java.util.Iterator;
+
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListenableFutureTask;
 import com.google.common.util.concurrent.ListeningExecutorService;
@@ -41,6 +46,7 @@ import com.hp.hpl.jena.sparql.modify.request.UpdateDataInsert;
 import com.hp.hpl.jena.update.UpdateProcessor;
 import com.hp.hpl.jena.update.UpdateRequest;
 
+import org.apache.jena.atlas.io.IndentedWriter;
 import org.fcrepo.indexer.Indexer;
 import org.slf4j.Logger;
 
@@ -94,7 +100,7 @@ public class SparqlIndexer implements Indexer {
      * all triples with subjects starting with the same subject.
     **/
     @Override
-    public ListenableFuture<Void> remove( final String subject ) {
+    public ListenableFuture<Void> remove(final String subject) {
 
         LOGGER.debug("Received remove for: {}", subject);
         // find triples/quads to delete
@@ -148,11 +154,16 @@ public class SparqlIndexer implements Indexer {
     }
 
     private ListenableFuture<Void> exec(final UpdateRequest update) {
+        if (update.getOperations().isEmpty()) {
+            LOGGER.debug("Received empty update/remove operation.");
+            return immediateFuture((Void) null);
+        }
         final ListenableFutureTask<Void> task =
             ListenableFutureTask.create(new Runnable() {
 
                 @Override
                 public void run() {
+
                     if (formUpdates) {
                         // form updates
                         final UpdateProcessor proc =
@@ -163,10 +174,33 @@ public class SparqlIndexer implements Indexer {
                         final UpdateProcessRemote proc =
                             new UpdateProcessRemote(update, updateBase,
                                     emptyContext);
-                        proc.execute();
+                        try {
+                            proc.execute();
+                        } catch (final Exception e) {
+                            LOGGER.error(
+                                    "Error executing Sparql update/remove!", e);
+                        }
                     }
                 }
             }, null);
+        task.addListener(new Runnable() {
+
+            @Override
+            public void run() {
+                try (final OutputStream buffer = new ByteArrayOutputStream()) {
+                    final IndentedWriter out = new IndentedWriter(buffer);
+                    update.output(out);
+                    LOGGER.trace(
+                            "Executed update/remove operation:\n{}",
+                            buffer.toString());
+                    out.close();
+                } catch (final IOException e) {
+                    LOGGER.error(
+                            "Couldn't retrieve execution of update/remove operation!",
+                            e);
+                }
+            }
+        }, executorService);
         executorService.submit(task);
         return task;
     }

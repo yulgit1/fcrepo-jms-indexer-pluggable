@@ -42,9 +42,9 @@ import org.slf4j.Logger;
 import com.google.common.io.Files;
 
 
-public abstract class IndexingST {
+public abstract class IndexingIT {
 
-    protected static final Logger LOGGER = getLogger(DublinCoreSolrIT.class);
+    private static final Logger LOGGER = getLogger(IndexingIT.class);
 
     protected static final int SERVER_PORT = parseInt(getProperty("test.port",
             "8080"));
