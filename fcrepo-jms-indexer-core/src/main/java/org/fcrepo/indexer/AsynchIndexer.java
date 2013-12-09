@@ -32,7 +32,7 @@ import com.google.common.util.concurrent.ListeningExecutorService;
  *
  * @author ajs6f
  * @date Dec 8, 2013
- * @param <T>
+ * @param <T> the type of response to expect from an operation
  */
 public abstract class AsynchIndexer<T> implements Indexer {
 

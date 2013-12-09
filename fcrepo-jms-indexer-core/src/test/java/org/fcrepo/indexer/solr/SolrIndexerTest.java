@@ -15,19 +15,22 @@
  */
 package org.fcrepo.indexer.solr;
 
+import static java.lang.System.currentTimeMillis;
+import static java.lang.Thread.sleep;
 import static org.apache.solr.core.CoreContainer.createAndLoad;
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.slf4j.LoggerFactory.getLogger;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.StringReader;
+import java.util.List;
 
 import org.apache.solr.client.solrj.SolrQuery;
 import org.apache.solr.client.solrj.SolrServer;
 import org.apache.solr.client.solrj.SolrServerException;
 import org.apache.solr.client.solrj.embedded.EmbeddedSolrServer;
-import org.apache.solr.client.solrj.response.QueryResponse;
+import org.apache.solr.common.SolrDocument;
 import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.core.CoreContainer;
 import org.fcrepo.indexer.solr.SolrIndexer;
@@ -51,6 +54,11 @@ public class SolrIndexerTest {
 
     private static final Logger LOGGER = getLogger(SolrIndexerTest.class);
 
+    private static final long TIMEOUT = 15000;
+
+    private static final long TIME_TO_WAIT_STEP = 1000;
+
+
     @Before
     public void setUp() throws Exception {
         final CoreContainer container =
@@ -61,48 +69,49 @@ public class SolrIndexerTest {
         indexer = new SolrIndexer(server);
     }
 
-    /**
-     * Test method for
-     * {@link org.fcrepo.indexer.solr.SolrIndexer#update(java.lang.String, java.lang.String)}
-     * .
-     *
-     * @throws SolrServerException
-     */
     @Test
-    public void testUpdate() throws SolrServerException {
+    public void testUpdate() throws SolrServerException, IOException, InterruptedException {
         doUpdate("456");
     }
 
-    private void doUpdate(final String pid) throws SolrServerException {
+    private void doUpdate(final String pid) throws SolrServerException, IOException, InterruptedException {
         final String content = "[{\"id\" : [\"" +pid+ "\"]}]";
         LOGGER.debug(
                 "Trying update operation with identifier: {} and content: \"{}\".",
                 pid, content);
         indexer.update(pid, new StringReader(content));
-        final SolrQuery numRows = new SolrQuery("*:*").setRows(0);
-        LOGGER.debug("Index now contains: {} records.", server.query(numRows)
-                .getResults().getNumFound());
-        final SolrParams params = new SolrQuery("id:" + pid);
-        final QueryResponse response = server.query(params);
-        assertEquals("Didn't find our expected record!", 1L, response
-                .getResults().getNumFound());
+
+        final SolrParams query = new SolrQuery("id:" + pid);
+        List<SolrDocument> results = server.query(query).getResults();
+        Boolean success = results.size() == 1;
+        final Long start = currentTimeMillis();
+        while ((currentTimeMillis() - start < TIMEOUT) && !success) {
+            LOGGER.debug("Waiting for index record to appear...");
+            sleep(TIME_TO_WAIT_STEP);
+            LOGGER.debug("Checking for presence of appropriate index record...");
+            results = server.query(query).getResults();
+            success = results.size() == 1;
+        }
+        assertTrue("Didn't find our expected record!", success);
     }
 
-    /**
-     * Test method for
-     * {@link org.fcrepo.indexer.solr.SolrIndexer#remove(java.lang.String)}.
-     *
-     * @throws IOException
-     * @throws SolrServerException
-     */
     @Test
-    public void testRemove() throws IOException, SolrServerException {
+    public void testRemove() throws IOException, SolrServerException, InterruptedException {
         final String pid = "123";
         doUpdate(pid);
         indexer.remove(pid);
-        final SolrParams params = new SolrQuery("id:" + pid);
-        final QueryResponse response = server.query(params);
-        assertEquals(0, response.getResults().getNumFound());
+        final SolrParams query = new SolrQuery("id:" + pid);
+        List<SolrDocument> results = server.query(query).getResults();
+        Boolean success = results.size() == 0;
+        final Long start = currentTimeMillis();
+        while ((currentTimeMillis() - start < TIMEOUT) && !success) {
+            LOGGER.debug("Waiting for index record to appear...");
+            sleep(TIME_TO_WAIT_STEP);
+            LOGGER.debug("Checking for presence of appropriate index record...");
+            results = server.query(query).getResults();
+            success = results.size() == 0;
+        }
+        assertTrue("Found our record when we shouldn't have!", success);
     }
 
 }

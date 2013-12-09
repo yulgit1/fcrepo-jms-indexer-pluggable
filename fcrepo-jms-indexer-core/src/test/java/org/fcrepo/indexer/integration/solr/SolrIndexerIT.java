@@ -15,19 +15,24 @@
  */
 package org.fcrepo.indexer.integration.solr;
 
+import static java.lang.System.currentTimeMillis;
+import static java.lang.Thread.sleep;
 import static org.junit.Assert.assertEquals;
+import static org.slf4j.LoggerFactory.getLogger;
 
 import java.io.IOException;
 import java.io.StringReader;
+import java.util.List;
 
 import org.apache.solr.client.solrj.SolrQuery;
 import org.apache.solr.client.solrj.SolrServer;
 import org.apache.solr.client.solrj.SolrServerException;
-import org.apache.solr.client.solrj.response.QueryResponse;
+import org.apache.solr.common.SolrDocument;
 import org.apache.solr.common.params.SolrParams;
 import org.fcrepo.indexer.solr.SolrIndexer;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
@@ -47,42 +52,53 @@ public class SolrIndexerIT {
     @Autowired
     private SolrServer server;
 
+    private static final Logger LOGGER = getLogger(SolrIndexerIT.class);
 
-    /**
-     * Test method for
-     * {@link org.fcrepo.indexer.solr.SolrIndexer#update(java.lang.String, java.lang.String)}
-     * .
-     *
-     * @throws SolrServerException
-     */
+    private static final long TIMEOUT = 15000;
+
+    private static final long TIME_TO_WAIT_STEP = 1000;
+
     @Test
-    public void testUpdate() throws SolrServerException {
+    public void testUpdate() throws SolrServerException, IOException, InterruptedException {
         doUpdate("123");
     }
 
-    private void doUpdate(final String pid) throws SolrServerException {
+    private void doUpdate(final String pid) throws SolrServerException, IOException, InterruptedException {
         final String json =
             "[{\"id\" : [\"" + pid + "\"]}]";
         solrIndexer.update(pid, new StringReader(json));
-        final SolrParams params = new SolrQuery("id:" + pid);
-        final QueryResponse response = server.query(params);
-        assertEquals(pid, response.getResults().get(0).get("id"));
+        final SolrParams query = new SolrQuery("id:" + pid);
+        List<SolrDocument> results = server.query(query).getResults();
+        Boolean success = results.size() == 1;
+        final Long start = currentTimeMillis();
+        while ((currentTimeMillis() - start < TIMEOUT) && !success) {
+            LOGGER.debug("Waiting for index record to appear...");
+            sleep(TIME_TO_WAIT_STEP);
+            LOGGER.debug("Checking for presence of appropriate index record...");
+            results = server.query(query).getResults();
+            success = results.size() == 1;
+        }
+        assertEquals("Didn't find the record that should have been created!",
+                pid, results.get(0).get("id"));
     }
 
-    /**
-     * Test method for
-     * {@link org.fcrepo.indexer.solr.SolrIndexer#remove(java.lang.String)}.
-     *
-     * @throws IOException
-     * @throws SolrServerException
-     */
     @Test
-    public void testRemove() throws IOException, SolrServerException {
+    public void testRemove() throws IOException, SolrServerException, InterruptedException {
         doUpdate("345");
         solrIndexer.remove("345");
-        final SolrParams params = new SolrQuery("id:345");
-        final QueryResponse response = server.query(params);
-        assertEquals(0, response.getResults().getNumFound());
+        final SolrParams query = new SolrQuery("id:345");
+        List<SolrDocument> results = server.query(query).getResults();
+        Boolean success = results.size() == 0;
+        final Long start = currentTimeMillis();
+        while ((currentTimeMillis() - start < TIMEOUT) && !success) {
+            LOGGER.debug("Waiting for index record to appear...");
+            sleep(TIME_TO_WAIT_STEP);
+            LOGGER.debug("Checking for presence of appropriate index record...");
+            results = server.query(query).getResults();
+            success = results.size() == 0;
+        }
+        assertEquals("Found a record that should have been deleted!", 0,
+                results.size());
     }
 
 }

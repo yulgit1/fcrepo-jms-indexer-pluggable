@@ -34,7 +34,6 @@ import java.util.concurrent.Callable;
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 
-import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListenableFutureTask;
 
 /**
@@ -45,7 +44,7 @@ import com.google.common.util.concurrent.ListenableFutureTask;
  * @author Esmé Cowles
  * @date Aug 19, 2013
 **/
-public class FileSerializer implements Indexer {
+public class FileSerializer extends SynchIndexer<File> {
 
     private static final Logger LOGGER = getLogger(FileSerializer.class);
 
@@ -75,7 +74,7 @@ public class FileSerializer implements Indexer {
      * @return
     **/
     @Override
-    public ListenableFuture<File> update(final String pid, final Reader content) throws IOException {
+    public ListenableFutureTask<File> updateSynch(final String pid, final Reader content) {
         // timestamped filename
         String fn = pid + "." + fmt.format(new Date());
         if (fn.indexOf('/') != -1) {
@@ -83,7 +82,7 @@ public class FileSerializer implements Indexer {
         }
         final File file = new File(path, fn);
         LOGGER.debug("Updating to file: {}", file);
-        return run(ListenableFutureTask.create(new Callable<File>() {
+        return ListenableFutureTask.create(new Callable<File>() {
 
             @Override
             public File call() {
@@ -95,7 +94,7 @@ public class FileSerializer implements Indexer {
                 }
                 return file;
             }
-        }));
+        });
 
     }
 
@@ -104,17 +103,12 @@ public class FileSerializer implements Indexer {
      * Remove the object from the index.
     **/
     @Override
-    public ListenableFuture<File> remove(final String pid) throws IOException {
+    public ListenableFutureTask<File> removeSynch(final String id) {
         // empty update
-        LOGGER.debug("Received remove for identifier: {}", pid);
-        return update(pid, new StringReader(""));
+        LOGGER.debug("Received remove for identifier: {}", id);
+        return updateSynch(id, new StringReader(""));
     }
 
-    private static <T> ListenableFuture<T> run(
-        final ListenableFutureTask<T> task) {
-        task.run();
-        return task;
-    }
     @Override
     public IndexerType getIndexerType() {
         return NAMEDFIELDS;

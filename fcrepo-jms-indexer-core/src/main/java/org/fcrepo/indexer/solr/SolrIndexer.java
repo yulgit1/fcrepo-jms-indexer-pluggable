@@ -17,6 +17,8 @@
 package org.fcrepo.indexer.solr;
 
 import static com.google.common.base.Throwables.propagate;
+import static com.google.common.util.concurrent.MoreExecutors.listeningDecorator;
+import static java.util.concurrent.Executors.newFixedThreadPool;
 import static org.fcrepo.indexer.Indexer.IndexerType.NAMEDFIELDS;
 import static org.slf4j.LoggerFactory.getLogger;
 
@@ -30,13 +32,13 @@ import org.apache.solr.client.solrj.SolrServer;
 import org.apache.solr.client.solrj.SolrServerException;
 import org.apache.solr.client.solrj.response.UpdateResponse;
 import org.apache.solr.common.SolrInputDocument;
-import org.fcrepo.indexer.Indexer;
+import org.fcrepo.indexer.AsynchIndexer;
 import org.fcrepo.indexer.IndexerGroup;
 import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListenableFutureTask;
+import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
@@ -48,12 +50,21 @@ import com.google.gson.GsonBuilder;
  * @author yecao
  * @date Nov 2013
  */
-public class SolrIndexer implements Indexer {
+public class SolrIndexer extends AsynchIndexer<UpdateResponse> {
 
     public static final String CONFIGURATION_FOLDER =
         "/fedora:system/fedora:transform/fedora:ldpath/";
 
     private final SolrServer server;
+
+    /**
+     * Number of threads to use for operating against the triplestore.
+     */
+    private static final Integer THREAD_POOL_SIZE = 5;
+
+    private ListeningExecutorService executorService =
+        listeningDecorator(newFixedThreadPool(THREAD_POOL_SIZE));
+
 
     private static final Logger LOGGER = getLogger(SolrIndexer.class);
 
@@ -87,10 +98,10 @@ public class SolrIndexer implements Indexer {
      * }]
      */
     @Override
-    public ListenableFuture<UpdateResponse> update(final String pid,
+    public ListenableFutureTask<UpdateResponse> updateSynch(final String pid,
             final Reader doc) {
         LOGGER.debug("Received request for update to: {}", pid);
-        return run(ListenableFutureTask.create(new Callable<UpdateResponse>() {
+        return ListenableFutureTask.create(new Callable<UpdateResponse>() {
 
             @Override
             public UpdateResponse call() throws Exception {
@@ -120,13 +131,13 @@ public class SolrIndexer implements Indexer {
                     throw propagate(e);
                 }
             }
-        }));
+        });
     }
 
     @Override
-    public ListenableFuture<UpdateResponse> remove(final String pid) throws IOException {
+    public ListenableFutureTask<UpdateResponse> removeSynch(final String pid) {
         LOGGER.debug("Received request for removal of: {}", pid);
-        return run(ListenableFutureTask.create(new Callable<UpdateResponse>() {
+        return ListenableFutureTask.create(new Callable<UpdateResponse>() {
 
             @Override
             public UpdateResponse call() throws Exception {
@@ -148,16 +159,8 @@ public class SolrIndexer implements Indexer {
                     throw propagate(e);
                 }
             }
-        }));
+        });
     }
-
-    private <T> ListenableFuture<T> run(final ListenableFutureTask<T> task) {
-        LOGGER.debug("Executing Solr update/remove...");
-        task.run();
-        LOGGER.debug("Solr update/remove executed.");
-        return task;
-    }
-
 
     /**
      * @return the {@link SolrServer} in use
@@ -170,5 +173,11 @@ public class SolrIndexer implements Indexer {
     public IndexerType getIndexerType() {
         return NAMEDFIELDS;
     }
+
+    @Override
+    public ListeningExecutorService executorService() {
+        return executorService;
+    }
+
 
 }

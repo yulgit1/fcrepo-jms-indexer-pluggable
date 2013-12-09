@@ -16,7 +16,6 @@
 
 package org.fcrepo.indexer;
 
-import static com.google.common.util.concurrent.MoreExecutors.sameThreadExecutor;
 import static org.fcrepo.indexer.Indexer.IndexerType.NO_CONTENT;
 import static org.slf4j.LoggerFactory.getLogger;
 
@@ -28,7 +27,6 @@ import java.util.concurrent.Callable;
 import org.slf4j.Logger;
 
 import com.google.common.util.concurrent.ListenableFutureTask;
-import com.google.common.util.concurrent.ListeningExecutorService;
 
 
 /**
@@ -38,16 +36,12 @@ import com.google.common.util.concurrent.ListeningExecutorService;
  * @author Esmé Cowles
  * @date Nov 25, 2013
 **/
-public class TestIndexer extends  AsynchIndexer<Boolean> {
+public class TestIndexer extends SynchIndexer<Boolean> {
 
     private static final Logger LOGGER = getLogger(TestIndexer.class);
 
     private final Set<String> updates = new HashSet<>();
     private final Set<String> removes = new HashSet<>();
-
-    private final ListeningExecutorService executorService =
-        sameThreadExecutor();
-
 
     @Override
     public ListenableFutureTask<Boolean> updateSynch(final String identifier,
@@ -104,8 +98,4 @@ public class TestIndexer extends  AsynchIndexer<Boolean> {
         return NO_CONTENT;
     }
 
-    @Override
-    public ListeningExecutorService executorService() {
-        return executorService;
-    }
 }
